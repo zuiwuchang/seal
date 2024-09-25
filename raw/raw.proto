@@ -1,0 +1,56 @@
+syntax = "proto3";
+option go_package = "github.com/zuiwuchang/seal/raw";
+
+// 簽名元信息
+message Metadata{
+    // 簽名使用的 hash 算法名稱
+    string hash = 1;
+    // 使用此公鑰 驗證簽名，如果沒有表示它是自簽名的
+    bytes parent = 2;
+    
+    // 公鑰，驗證它簽名的數據是否有效
+    bytes publicKey =3;
+
+    // unix 表示此簽名有效起始時間，<1 則表示沒有此限制
+    int64 afrer = 4;
+    // unix 表示此簽名有效截止時間，<1 則表示沒有此限制
+    int64 before = 5;
+
+    // 可選的 國家名稱
+    string country = 6;
+    // 可選的 /州 名稱
+    string state = 7;
+    // 可選的 地點或城市名稱
+    string locality = 8;
+    // 可選的 組織或公司名稱
+    string organization = 9;
+    // 可選的 組織單位或公司部門
+    string organizational = 10;
+    // 可選的 被簽名的附帶內容
+    bytes content = 11;
+}
+// 公鑰用於驗證簽名
+message PublicKey{
+    // 元信息
+    bytes metadata = 1;
+    // 本身的簽名用於驗證自身有效
+    // * 對於自己簽名的使用 metadata -> hash+publicKey 驗證
+    // * 否則使用 metadata -> hash+parent 進行驗證
+    bytes signature = 2;
+}
+
+// 公鑰鏈，用於回溯簽發源
+message PublicChain{
+    // 這個鏈條是由 誰簽發的，沒有則表示自己簽名的
+    bytes parent = 1;
+
+    // 公鑰用於驗證簽名
+    PublicKey publicKey = 2;
+}
+
+// 私鑰鏈，用於簽名
+message PrivateChain{
+    bytes publicChain = 1;
+    // 私鑰用於簽名
+    bytes privateKey = 2;
+}
