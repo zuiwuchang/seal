@@ -107,7 +107,7 @@ func (p *PrivateChain) SignPrivate(md Metadata, bitSize int) (*PrivateChain, err
 	}
 	md.Parent = &p.privateKey.PublicKey
 	md.PublicKey = &privateKey.PublicKey
-	pub, e := newPublicChain(p.PublicChain.raw, privateKey, &md)
+	pub, e := newPublicChain(p.PublicChain, privateKey, &md)
 	if e != nil {
 		return nil, e
 	}

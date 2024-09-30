@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
@@ -17,38 +16,29 @@ import (
 type PublicChain struct {
 	raw []byte
 	md  *Metadata
+
+	parent *PublicChain
 }
 
 func (p *PublicChain) Println() {
-	b := p.raw
-	for i := 0; len(b) != 0; i++ {
+	for i := 0; p != nil; i++ {
 		fmt.Println(i, `------------------PublicChain------------------`)
-		var m raw.PublicChain
-		e := proto.Unmarshal(b, &m)
-		if e != nil {
-			log.Println(e)
-			break
-		}
-		b = m.Parent
-		var md raw.Metadata
-		e = proto.Unmarshal(m.PublicKey.Metadata, &md)
-		if e != nil {
-			log.Println(e)
-			break
-		}
+		md := p.md
+		p = p.parent
 
-		fmt.Println(`hash:`, md.Hash)
-		if len(md.Parent) != 0 {
-			fmt.Println(`parent:`, base64.RawURLEncoding.EncodeToString(md.Parent))
+		fmt.Println(`hash:`, md.Hash.String())
+		if md.Parent != nil {
+
+			fmt.Println(`parent:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(md.Parent)))
 		}
-		if len(md.PublicKey) != 0 {
-			fmt.Println(`publicKey:`, base64.RawURLEncoding.EncodeToString(md.PublicKey))
+		if md.PublicKey != nil {
+			fmt.Println(`publicKey:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PublicKey((md.PublicKey))))
 		}
-		if md.Afrer > 0 {
-			fmt.Println(`after:`, time.Unix(md.Afrer, 0).Local())
+		if !md.Afrer.IsZero() {
+			fmt.Println(`after:`, md.Afrer)
 		}
-		if md.Before > 0 {
-			fmt.Println(`before:`, time.Unix(md.Before, 0).Local())
+		if !md.Before.IsZero() {
+			fmt.Println(`before:`, md.Before)
 		}
 		if md.Country != `` {
 			fmt.Println(`country:`, md.Country)
@@ -71,7 +61,7 @@ func (p *PublicChain) Println() {
 
 	}
 }
-func newPublicChain(parent []byte, pri *rsa.PrivateKey, md *Metadata) (*PublicChain, error) {
+func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata) (*PublicChain, error) {
 	b, e := proto.Marshal(md.toRaw())
 	if e != nil {
 		return nil, e
@@ -83,8 +73,12 @@ func newPublicChain(parent []byte, pri *rsa.PrivateKey, md *Metadata) (*PublicCh
 	if e != nil {
 		return nil, e
 	}
+	var parentRaw []byte
+	if parent != nil {
+		parentRaw = parent.raw
+	}
 	raw, e := proto.Marshal(&raw.PublicChain{
-		Parent: parent,
+		Parent: parentRaw,
 		PublicKey: &raw.PublicKey{
 			Metadata:  b,
 			Signature: sig,
@@ -94,8 +88,9 @@ func newPublicChain(parent []byte, pri *rsa.PrivateKey, md *Metadata) (*PublicCh
 		return nil, e
 	}
 	return &PublicChain{
-		raw: raw,
-		md:  md,
+		raw:    raw,
+		md:     md,
+		parent: parent,
 	}, nil
 }
 
@@ -123,11 +118,22 @@ func ParsePublicChainWithTime(b []byte, now int64) (*PublicChain, error) {
 	}
 
 	// 驗證簽名鏈
+	var (
+		last    = pub
+		current *PublicChain
+	)
 	for md.Parent != nil {
-		chain, md, e = parsePublicChain(chain.Parent, now)
+		b = chain.Parent
+		chain, md, e = parsePublicChain(b, now)
 		if e != nil {
 			return nil, e
 		}
+		current = &PublicChain{
+			raw: b,
+			md:  md,
+		}
+		last.parent = current
+		last = current
 	}
 	return pub, nil
 }
@@ -231,4 +237,14 @@ func (p *PublicChain) Valid() error {
 // 驗證 sig 是否是 hashed 的簽名
 func (p *PublicChain) Verify(hash crypto.Hash, hashed []byte, sig []byte) error {
 	return rsa.VerifyPKCS1v15(p.md.PublicKey, hash, hashed, sig)
+}
+
+// 返回它是由誰簽發的，如果爲 nil 則表示自簽發
+func (p *PublicChain) Parent() *PublicChain {
+	return p.parent
+}
+
+// 返回元信息，請勿修改
+func (p *PublicChain) Metadata() *Metadata {
+	return p.md
 }
