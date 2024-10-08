@@ -52,7 +52,7 @@ func ParsePrivateChainWithTime(b []byte, now int64) (*PrivateChain, error) {
 	if e != nil {
 		return nil, e
 	}
-	if !pub.md.PublicKey.Equal(privateKey) {
+	if !pub.md.PublicKey.Equal(privateKey.Public()) {
 		return nil, ErrDamaged
 	}
 	return &PrivateChain{
@@ -76,6 +76,7 @@ func New(md Metadata, bitSize int) (*PrivateChain, error) {
 	if e != nil {
 		return nil, e
 	}
+
 	md.Parent = nil
 	md.PublicKey = &privateKey.PublicKey
 	pub, e := newPublicChain(nil, privateKey, &md)
@@ -94,6 +95,11 @@ func New(md Metadata, bitSize int) (*PrivateChain, error) {
 		raw:         raw,
 		privateKey:  privateKey,
 	}, nil
+}
+
+// 返回私鑰
+func (p *PrivateChain) PrivateKey() *rsa.PrivateKey {
+	return p.privateKey
 }
 
 // 簽署一個私鏈

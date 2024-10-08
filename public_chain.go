@@ -176,7 +176,7 @@ func parsePublicChain(b []byte, at int64) (
 	h := hash.New()
 	h.Write(m.PublicKey.Metadata)
 	hashed := h.Sum(nil)
-	e = rsa.VerifyPKCS1v15(parent, hash, hashed, m.PublicKey.Signature)
+	e = rsa.VerifyPKCS1v15(pub, hash, hashed, m.PublicKey.Signature)
 	if e != nil {
 		return
 	}
@@ -211,7 +211,7 @@ func parsePublicChain(b []byte, at int64) (
 	return
 }
 
-// 驗證鏈當前是否有效
+// 驗證鏈當前時間是否有效
 func (p *PublicChain) Valid() error {
 	if p == nil || p.md == nil {
 		return ErrNil
@@ -242,6 +242,11 @@ func (p *PublicChain) Verify(hash crypto.Hash, hashed []byte, sig []byte) error 
 // 返回它是由誰簽發的，如果爲 nil 則表示自簽發
 func (p *PublicChain) Parent() *PublicChain {
 	return p.parent
+}
+
+// 返回公鑰
+func (p *PublicChain) PublicKey() *rsa.PublicKey {
+	return p.md.PublicKey
 }
 
 // 返回元信息，請勿修改
