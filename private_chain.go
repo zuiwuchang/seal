@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
-	"fmt"
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
@@ -18,12 +16,6 @@ type PrivateChain struct {
 	*PublicChain
 	raw        []byte
 	privateKey *rsa.PrivateKey
-}
-
-func (p *PrivateChain) Println() {
-	fmt.Println(`------------------PrivateChain------------------`)
-	fmt.Println(`pri:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PrivateKey(p.privateKey)))
-	p.PublicChain.Println()
 }
 
 // 將私鏈序列化，以便於網路傳輸或存儲
@@ -128,5 +120,46 @@ func (p *PrivateChain) SignPrivate(md Metadata, bitSize int) (*PrivateChain, err
 		PublicChain: pub,
 		raw:         raw,
 		privateKey:  privateKey,
+	}, nil
+}
+
+// 簽名一個內容
+func (p *PrivateChain) SignContent(md Metadata) (*PublicChain, error) {
+	if !md.Hash.Available() {
+		return nil, HashError(md.Hash.String())
+	}
+	var parentRaw []byte
+	if p.parent == nil {
+		md.Parent = nil
+	} else {
+		md.Parent = p.parent.PublicKey()
+		parentRaw = p.parent.raw
+	}
+	md.PublicKey = p.PublicKey()
+	b, e := proto.Marshal(md.toRaw())
+	if e != nil {
+		return nil, e
+	}
+	h := md.Hash.New()
+	h.Write(b)
+	hashed := h.Sum(nil)
+	sig, e := rsa.SignPKCS1v15(nil, p.privateKey, md.Hash, hashed)
+	if e != nil {
+		return nil, e
+	}
+	b, e = proto.Marshal(&raw.PublicChain{
+		Parent: parentRaw,
+		PublicKey: &raw.PublicKey{
+			Metadata:  b,
+			Signature: sig,
+		},
+	})
+	if e != nil {
+		return nil, e
+	}
+	return &PublicChain{
+		raw:    b,
+		parent: p.parent,
+		md:     &md,
 	}, nil
 }

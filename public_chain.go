@@ -4,8 +4,6 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
-	"fmt"
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
@@ -20,47 +18,6 @@ type PublicChain struct {
 	parent *PublicChain
 }
 
-func (p *PublicChain) Println() {
-	for i := 0; p != nil; i++ {
-		fmt.Println(i, `------------------PublicChain------------------`)
-		md := p.md
-		p = p.parent
-
-		fmt.Println(`hash:`, md.Hash.String())
-		if md.Parent != nil {
-
-			fmt.Println(`parent:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PublicKey(md.Parent)))
-		}
-		if md.PublicKey != nil {
-			fmt.Println(`publicKey:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PublicKey((md.PublicKey))))
-		}
-		if !md.Afrer.IsZero() {
-			fmt.Println(`after:`, md.Afrer)
-		}
-		if !md.Before.IsZero() {
-			fmt.Println(`before:`, md.Before)
-		}
-		if md.Country != `` {
-			fmt.Println(`country:`, md.Country)
-		}
-		if md.State != `` {
-			fmt.Println(`state:`, md.State)
-		}
-		if md.Locality != `` {
-			fmt.Println(`locality:`, md.Locality)
-		}
-		if md.Organization != `` {
-			fmt.Println(`organization:`, md.Organization)
-		}
-		if md.Organizational != `` {
-			fmt.Println(`organizational:`, md.Organizational)
-		}
-		if len(md.Content) != 0 {
-			fmt.Printf("content: %s\n", md.Content)
-		}
-
-	}
-}
 func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata) (*PublicChain, error) {
 	b, e := proto.Marshal(md.toRaw())
 	if e != nil {

@@ -1,7 +1,9 @@
 package seal_test
 
 import (
+	"bytes"
 	"crypto"
+	"fmt"
 	"testing"
 
 	"github.com/zuiwuchang/seal"
@@ -34,6 +36,25 @@ func TestMarshalRootChain(t *testing.T) {
 		t.Fatal(`PublicKey not equal`)
 	}
 
+	// content
+	content := []byte(`cerberus is an idea`)
+	c, e := pri.SignContent(seal.Metadata{
+		Hash:    crypto.SHA256,
+		Content: content,
+	})
+	if e != nil {
+		t.Fatal(`SignContent`, e)
+	}
+	pub0, e = seal.ParsePublicChain(c.Marshal())
+	if e != nil {
+		t.Fatal(`ParsePublicChain`, e)
+	}
+	if !pub0.PublicKey().Equal(pub.PublicKey()) {
+		t.Fatal(`PublicKey not equal`)
+	}
+	if !bytes.Equal(content, pub0.Metadata().Content) {
+		t.Fatal(`Content not equal`)
+	}
 }
 
 func TestMarshalChain(t *testing.T) {
@@ -46,23 +67,16 @@ func TestMarshalChain(t *testing.T) {
 	if e != nil {
 		t.Fatal(`New`, e)
 	}
-	pri, e = pri.SignPrivate(seal.Metadata{
-		Hash:           crypto.SHA224,
-		Organization:   `cerberus`,
-		Organizational: `B`,
-		Content:        []byte(`ca 0`),
-	}, 1024)
-	if e != nil {
-		t.Fatal(`New`, e)
-	}
-	pri, e = pri.SignPrivate(seal.Metadata{
-		Hash:           crypto.SHA1,
-		Organization:   `cerberus`,
-		Organizational: `C`,
-		Content:        []byte(`ca B-0`),
-	}, 1024)
-	if e != nil {
-		t.Fatal(`New`, e)
+	for i := 0; i < 6; i++ {
+		pri, e = pri.SignPrivate(seal.Metadata{
+			Hash:           crypto.SHA224,
+			Organization:   `cerberus`,
+			Organizational: fmt.Sprintf(`C %d`, i),
+			Content:        []byte(fmt.Sprintf(`ca %d`, i)),
+		}, 1024)
+		if e != nil {
+			t.Fatal(`New`, e)
+		}
 	}
 
 	pri0, e := seal.ParsePrivateChain(pri.Marshal())
@@ -80,6 +94,26 @@ func TestMarshalChain(t *testing.T) {
 	}
 	if !pub0.PublicKey().Equal(pub.PublicKey()) {
 		t.Fatal(`PublicKey not equal`)
+	}
+
+	// content
+	content := []byte(`cerberus is an idea`)
+	c, e := pri.SignContent(seal.Metadata{
+		Hash:    crypto.SHA256,
+		Content: content,
+	})
+	if e != nil {
+		t.Fatal(`SignContent`, e)
+	}
+	pub0, e = seal.ParsePublicChain(c.Marshal())
+	if e != nil {
+		t.Fatal(`ParsePublicChain`, e)
+	}
+	if !pub0.PublicKey().Equal(pub.PublicKey()) {
+		t.Fatal(`PublicKey not equal`)
+	}
+	if !bytes.Equal(content, pub0.Metadata().Content) {
+		t.Fatal(`Content not equal`)
 	}
 
 }
