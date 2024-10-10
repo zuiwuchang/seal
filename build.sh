@@ -49,54 +49,101 @@ case "$1" in
     run)
         shift
         cd "$BashDir/bin"
-        ./seal ca \
-            --pri root.pri --pub root.pub \
-            -H SHA-256 -b 4096 \
+        # ./seal ca \
+        #     --pri root.pri --pub root.pub \
+        #     -H SHA-256 -b 4096 \
+        #     -C cn -S sichuan -L chengdu \
+        #     -O cerberus -o it \
+        #     -c "root ca" \
+        #     -y
+        # du -b root.p*
+
+        # ./seal ca \
+        #     -p root.pri \
+        #     --pri ca0.pri --pub ca0.pub \
+        #     -H SHA-256 -b 2048 \
+        #     -C cn -S sichuan -L chengdu \
+        #     -O cerberus -o it \
+        #     -c "root->ca0" \
+        #     -y
+        # du -b ca0.p*
+
+        # ./seal ca \
+        #     -p root.pri \
+        #     --pri ca1.pri --pub ca1.pub \
+        #     -H SHA-256 -b 2048 \
+        #     -C cn -S sichuan -L chengdu \
+        #     -O cerberus -o it \
+        #     -c "root->ca1" \
+        #     -y
+        # du -b ca1.p*
+
+        # ./seal ca \
+        #     -p ca0.pri \
+        #     --pri caA.pri --pub caA.pub \
+        #     -H SHA-256 -b 2048 \
+        #     -C cn -S sichuan -L chengdu \
+        #     -O cerberus -o it \
+        #     -c "root->ca0->caA" \
+        #     -y
+        # du -b caA.p*
+
+        # ./seal ca \
+        #     -p ca1.pri \
+        #     --pri caB.pri --pub caB.pub \
+        #     -H SHA-256 -b 2048 \
+        #     -C cn -S sichuan -L chengdu \
+        #     -O cerberus -o it \
+        #     -c "root->ca1->caB" \
+        #     -y
+        # du -b caB.p*
+
+
+        ./seal sign \
+            -p root.pri --pub root.sign \
+            -H SHA-256 \
             -C cn -S sichuan -L chengdu \
             -O cerberus -o it \
-            -c "root ca" \
+            -c "root ca sign" \
             -y
-        du -b root.p*
+        du -b root.sign
+
+        ./seal sign \
+            -p ca0.pri --pub ca0.sign \
+            -H SHA-256 \
+            -C cn -S sichuan -L chengdu \
+            -O cerberus -o it \
+            -c "root->ca0 sign" \
+            -y
+        du -b ca0.sign
+
+        ./seal sign \
+            -p ca1.pri --pub ca1.sign \
+            -H SHA-256 \
+            -C cn -S sichuan -L chengdu \
+            -O cerberus -o it \
+            -c "root->ca1 sign" \
+            -y
+        du -b ca1.sign
+
+        ./seal sign \
+            -p caA.pri --pub caA.sign \
+            -H SHA-256 \
+            -C cn -S sichuan -L chengdu \
+            -O cerberus -o it \
+            -c "root->ca0->caA sign" \
+            -y
+        du -b caA.sign
 
         ./seal ca \
-            -p root.pri \
-            --pri ca0.pri --pub ca0.pub \
-            -H SHA-256 -b 2048 \
+            -p caB.pri --pub caB.sign \
+            -H SHA-256 \
             -C cn -S sichuan -L chengdu \
             -O cerberus -o it \
-            -c "root->ca0" \
+            -c "root->ca1->caB sign" \
             -y
-        du -b ca0.p*
+        du -b caB.sign
 
-        ./seal ca \
-            -p root.pri \
-            --pri ca1.pri --pub ca1.pub \
-            -H SHA-256 -b 2048 \
-            -C cn -S sichuan -L chengdu \
-            -O cerberus -o it \
-            -c "root->ca1" \
-            -y
-        du -b ca1.p*
-
-        ./seal ca \
-            -p ca0.pri \
-            --pri caA.pri --pub caA.pub \
-            -H SHA-256 -b 2048 \
-            -C cn -S sichuan -L chengdu \
-            -O cerberus -o it \
-            -c "root->ca0->caA" \
-            -y
-        du -b caA.p*
-
-        ./seal ca \
-            -p ca1.pri \
-            --pri caB.pri --pub caB.pub \
-            -H SHA-256 -b 2048 \
-            -C cn -S sichuan -L chengdu \
-            -O cerberus -o it \
-            -c "root->ca1->caB" \
-            -y
-        du -b caB.p*
         exit $?
     ;;
     docker)

@@ -21,6 +21,7 @@ func main() {
 	}
 	cmd.AddCommand(
 		ca(),
+		sign(),
 	)
 	e := cmd.Execute()
 	if e != nil {
