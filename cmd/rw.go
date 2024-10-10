@@ -11,7 +11,6 @@ import (
 	"io/fs"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/zuiwuchang/seal"
 )
@@ -104,7 +103,7 @@ func writeFile(yes bool, pri bool, path string, data []byte) (e error) {
 	return
 }
 
-func readPrivateChain(path string) (pri *seal.PrivateChain, e error) {
+func readPrivateChain(path string, ignoreTime bool) (pri *seal.PrivateChain, e error) {
 	f, e := os.Open(path)
 	if e != nil {
 		return
@@ -134,11 +133,14 @@ func readPrivateChain(path string) (pri *seal.PrivateChain, e error) {
 	if e != nil {
 		return
 	}
-
-	pri, e = seal.ParsePrivateChainWithTime(b, time.Now().Unix())
+	if ignoreTime {
+		pri, e = seal.ParsePrivateChainWithTime(b, 0)
+	} else {
+		pri, e = seal.ParsePrivateChain(b)
+	}
 	return
 }
-func readChain(path string) (pri *seal.PrivateChain, pub *seal.PublicChain, e error) {
+func readChain(path string, ignoreTime bool) (pri *seal.PrivateChain, pub *seal.PublicChain, e error) {
 	f, e := os.Open(path)
 	if e != nil {
 		return
@@ -173,9 +175,17 @@ func readChain(path string) (pri *seal.PrivateChain, pub *seal.PublicChain, e er
 		return
 	}
 	if pubchain {
-		pub, e = seal.ParsePublicChainWithTime(b, time.Now().Unix())
+		if ignoreTime {
+			pub, e = seal.ParsePublicChainWithTime(b, 0)
+		} else {
+			pub, e = seal.ParsePublicChain(b)
+		}
 	} else {
-		pri, e = seal.ParsePrivateChainWithTime(b, time.Now().Unix())
+		if ignoreTime {
+			pri, e = seal.ParsePrivateChainWithTime(b, 0)
+		} else {
+			pri, e = seal.ParsePrivateChain(b)
+		}
 	}
 	return
 }

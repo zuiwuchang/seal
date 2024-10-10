@@ -23,6 +23,7 @@ func ca() (cmd *cobra.Command) {
 		duration                string
 
 		country, state, locality, organization, organizational, content string
+		ignoreTime                                                      bool
 	)
 	cmd = &cobra.Command{
 		Use:   "ca",
@@ -64,7 +65,7 @@ func ca() (cmd *cobra.Command) {
 				if parentPath == "" {
 					pri, e = seal.New(md, bitSize)
 				} else {
-					pri, e = readPrivateChain(parentPath)
+					pri, e = readPrivateChain(parentPath, ignoreTime)
 					if e != nil {
 						return
 					}
@@ -111,5 +112,6 @@ func ca() (cmd *cobra.Command) {
 	flags.StringVarP(&organizational, "organizational", "o", "", "organizational or section")
 	flags.StringVarP(&content, "content", "c", "", "content")
 
+	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
 	return
 }

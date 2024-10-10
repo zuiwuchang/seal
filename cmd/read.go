@@ -12,7 +12,7 @@ import (
 
 func read() (cmd *cobra.Command) {
 	var (
-		full bool
+		full, ignoreTime bool
 	)
 	cmd = &cobra.Command{
 		Use:   "read",
@@ -29,7 +29,7 @@ func read() (cmd *cobra.Command) {
 				)
 				for _, arg := range args {
 					fmt.Printf("--- %s ---\n", arg)
-					pri, pub, e = readChain(arg)
+					pri, pub, e = readChain(arg, ignoreTime)
 					if e != nil {
 						return
 					} else if pri != nil {
@@ -62,6 +62,7 @@ func read() (cmd *cobra.Command) {
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&full, "full", "f", false, "print all chain")
+	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
 	return
 }
 func printPub(pub *seal.PublicChain) {

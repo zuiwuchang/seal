@@ -23,6 +23,7 @@ func sign() (cmd *cobra.Command) {
 
 		country, state, locality, organization, organizational, content string
 		contentPath                                                     string
+		ignoreTime                                                      bool
 	)
 	cmd = &cobra.Command{
 		Use:   "sign",
@@ -65,7 +66,7 @@ func sign() (cmd *cobra.Command) {
 					md.Before = md.Afrer.Add(d)
 				}
 
-				pri, e := readPrivateChain(parentPath)
+				pri, e := readPrivateChain(parentPath, ignoreTime)
 				if e != nil {
 					return
 				}
@@ -105,5 +106,6 @@ func sign() (cmd *cobra.Command) {
 	flags.StringVarP(&content, "content", "c", "", "content")
 	flags.StringVarP(&contentPath, "content-file", "f", "", "read content from a file")
 
+	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
 	return
 }
