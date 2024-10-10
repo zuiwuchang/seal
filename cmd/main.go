@@ -22,6 +22,7 @@ func main() {
 	cmd.AddCommand(
 		ca(),
 		sign(),
+		read(),
 	)
 	e := cmd.Execute()
 	if e != nil {

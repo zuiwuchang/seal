@@ -138,3 +138,44 @@ func readPrivateChain(path string) (pri *seal.PrivateChain, e error) {
 	pri, e = seal.ParsePrivateChainWithTime(b, time.Now().Unix())
 	return
 }
+func readChain(path string) (pri *seal.PrivateChain, pub *seal.PublicChain, e error) {
+	f, e := os.Open(path)
+	if e != nil {
+		return
+	}
+	defer f.Close()
+	size := len(TagPrivateChain)
+	buf := make([]byte, size)
+	_, e = io.ReadAtLeast(f, buf, size)
+	if e != nil {
+		return
+	}
+	pubchain := false
+	if bytes.Equal(buf, []byte(TagPrivateChain)) {
+	} else if bytes.Equal(buf, []byte(TagPublicChain)) {
+		pubchain = true
+	} else {
+		e = errors.New(`not a private chain file`)
+		return
+	}
+	br := bufio.NewReader(f)
+	b, e := br.ReadBytes('\n')
+	if e != nil {
+		return
+	}
+	gr, e := gzip.NewReader(
+		base64.NewDecoder(base64.RawURLEncoding, bytes.NewReader(b[:len(b)-1])))
+	if e != nil {
+		return
+	}
+	b, e = io.ReadAll(gr)
+	if e != nil {
+		return
+	}
+	if pubchain {
+		pub, e = seal.ParsePublicChainWithTime(b, time.Now().Unix())
+	} else {
+		pri, e = seal.ParsePrivateChainWithTime(b, time.Now().Unix())
+	}
+	return
+}
