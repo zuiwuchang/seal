@@ -4,6 +4,8 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
@@ -18,11 +20,12 @@ type PublicChain struct {
 	parent *PublicChain
 }
 
-func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata) (*PublicChain, error) {
-	b, e := proto.Marshal(md.toRaw())
+func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata, format Format) (*PublicChain, error) {
+	b, e := formatMarshal(format, md.toRaw())
 	if e != nil {
 		return nil, e
 	}
+
 	h := md.Hash.New()
 	h.Write(b)
 	hashed := h.Sum(nil)
@@ -34,7 +37,7 @@ func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata) (*Pu
 	if parent != nil {
 		parentRaw = parent.raw
 	}
-	raw, e := proto.Marshal(&raw.PublicChain{
+	raw, e := formatMarshal(format, &raw.PublicChain{
 		Parent: parentRaw,
 		PublicKey: &raw.PublicKey{
 			Metadata:  b,
@@ -45,7 +48,7 @@ func newPublicChain(parent *PublicChain, pri *rsa.PrivateKey, md *Metadata) (*Pu
 		return nil, e
 	}
 	return &PublicChain{
-		raw:    raw,
+		raw:    append([]byte{byte(format)}, raw...),
 		md:     md,
 		parent: parent,
 	}, nil
@@ -98,13 +101,29 @@ func parsePublicChain(b []byte, at int64) (
 	publicChain *raw.PublicChain,
 	metadata *Metadata,
 	e error) {
-	var m raw.PublicChain
-	e = proto.Unmarshal(b, &m)
-	if e != nil {
+	if len(b) < 1 {
+		e = ErrDamaged
 		return
 	}
+	var m raw.PublicChain
 	var md raw.Metadata
-	e = proto.Unmarshal(m.PublicKey.Metadata, &md)
+	switch Format(b[0]) {
+	case FormatProtocolBuffers:
+		e = proto.Unmarshal(b[1:], &m)
+		if e != nil {
+			return
+		}
+		e = proto.Unmarshal(m.PublicKey.Metadata, &md)
+	case FormatJSON:
+		e = json.Unmarshal(b[1:], &m)
+		if e != nil {
+			return
+		}
+		e = json.Unmarshal(m.PublicKey.Metadata, &md)
+	default:
+		e = fmt.Errorf(`seal: unknow format %d`, b[0])
+		return
+	}
 	if e != nil {
 		return
 	}

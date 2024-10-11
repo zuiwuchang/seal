@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
-	"google.golang.org/protobuf/proto"
 )
 
 // 私鑰鏈，用於簽名
@@ -31,11 +30,15 @@ func ParsePrivateChain(b []byte) (*PrivateChain, error) {
 // 加載序列化的私鏈到內存
 // now 如果爲 < 1 則不驗證時間
 func ParsePrivateChainWithTime(b []byte, now int64) (*PrivateChain, error) {
+	if len(b) < 1 {
+		return nil, ErrDamaged
+	}
 	var pri raw.PrivateChain
-	e := proto.Unmarshal(b, &pri)
+	e := formatUnmarshal(Format(b[0]), b[1:], &pri)
 	if e != nil {
 		return nil, e
 	}
+
 	privateKey, e := x509.ParsePKCS1PrivateKey(pri.PrivateKey)
 	if e != nil {
 		return nil, e
@@ -60,7 +63,7 @@ func (p *PrivateChain) Sign(hash crypto.Hash, hashed []byte) ([]byte, error) {
 }
 
 // 創建一個私鏈
-func New(md Metadata, bitSize int) (*PrivateChain, error) {
+func New(md Metadata, bitSize int, format Format) (*PrivateChain, error) {
 	if !md.Hash.Available() {
 		return nil, HashError(md.Hash.String())
 	}
@@ -71,11 +74,12 @@ func New(md Metadata, bitSize int) (*PrivateChain, error) {
 
 	md.Parent = nil
 	md.PublicKey = &privateKey.PublicKey
-	pub, e := newPublicChain(nil, privateKey, &md)
+	pub, e := newPublicChain(nil, privateKey, &md, format)
 	if e != nil {
 		return nil, e
 	}
-	raw, e := proto.Marshal(&raw.PrivateChain{
+
+	raw, e := formatMarshal(format, &raw.PrivateChain{
 		PublicChain: pub.raw,
 		PrivateKey:  x509.MarshalPKCS1PrivateKey(privateKey),
 	})
@@ -84,7 +88,7 @@ func New(md Metadata, bitSize int) (*PrivateChain, error) {
 	}
 	return &PrivateChain{
 		PublicChain: pub,
-		raw:         raw,
+		raw:         append([]byte{byte(format)}, raw...),
 		privateKey:  privateKey,
 	}, nil
 }
@@ -103,13 +107,14 @@ func (p *PrivateChain) SignPrivate(md Metadata, bitSize int) (*PrivateChain, err
 	if e != nil {
 		return nil, e
 	}
+	format := Format(p.raw[0])
 	md.Parent = &p.privateKey.PublicKey
 	md.PublicKey = &privateKey.PublicKey
-	pub, e := newPublicChain(p.PublicChain, privateKey, &md)
+	pub, e := newPublicChain(p.PublicChain, privateKey, &md, format)
 	if e != nil {
 		return nil, e
 	}
-	raw, e := proto.Marshal(&raw.PrivateChain{
+	raw, e := formatMarshal(format, &raw.PrivateChain{
 		PublicChain: pub.raw,
 		PrivateKey:  x509.MarshalPKCS1PrivateKey(privateKey),
 	})
@@ -118,7 +123,7 @@ func (p *PrivateChain) SignPrivate(md Metadata, bitSize int) (*PrivateChain, err
 	}
 	return &PrivateChain{
 		PublicChain: pub,
-		raw:         raw,
+		raw:         append([]byte{p.raw[0]}, raw...),
 		privateKey:  privateKey,
 	}, nil
 }
@@ -128,6 +133,7 @@ func (p *PrivateChain) SignContent(md Metadata) (*PublicChain, error) {
 	if !md.Hash.Available() {
 		return nil, HashError(md.Hash.String())
 	}
+	format := Format(p.raw[0])
 	var parentRaw []byte
 	if p.parent == nil {
 		md.Parent = nil
@@ -136,7 +142,7 @@ func (p *PrivateChain) SignContent(md Metadata) (*PublicChain, error) {
 		parentRaw = p.parent.raw
 	}
 	md.PublicKey = p.PublicKey()
-	b, e := proto.Marshal(md.toRaw())
+	b, e := formatMarshal(format, md.toRaw())
 	if e != nil {
 		return nil, e
 	}
@@ -147,7 +153,7 @@ func (p *PrivateChain) SignContent(md Metadata) (*PublicChain, error) {
 	if e != nil {
 		return nil, e
 	}
-	b, e = proto.Marshal(&raw.PublicChain{
+	b, e = formatMarshal(format, &raw.PublicChain{
 		Parent: parentRaw,
 		PublicKey: &raw.PublicKey{
 			Metadata:  b,
@@ -158,7 +164,7 @@ func (p *PrivateChain) SignContent(md Metadata) (*PublicChain, error) {
 		return nil, e
 	}
 	return &PublicChain{
-		raw:    b,
+		raw:    append([]byte{p.raw[0]}, b...),
 		parent: p.parent,
 		md:     &md,
 	}, nil

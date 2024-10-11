@@ -4,9 +4,19 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/zuiwuchang/seal/raw"
+	"google.golang.org/protobuf/proto"
+)
+
+type Format byte
+
+const (
+	FormatJSON Format = 1 + iota
+	FormatProtocolBuffers
 )
 
 // 簽名元信息
@@ -74,4 +84,24 @@ func (md *Metadata) toRaw() *raw.Metadata {
 		m.Before = md.Before.Unix()
 	}
 	return m
+}
+func formatMarshal(format Format, m proto.Message) ([]byte, error) {
+	switch format {
+	case FormatJSON:
+		return json.Marshal(m)
+	case FormatProtocolBuffers:
+		return proto.Marshal(m)
+	default:
+		return nil, fmt.Errorf(`seal: unknow format %d`, format)
+	}
+}
+func formatUnmarshal(foramt Format, b []byte, m proto.Message) error {
+	switch Format(foramt) {
+	case FormatProtocolBuffers:
+		return proto.Unmarshal(b, m)
+	case FormatJSON:
+		return json.Unmarshal(b, m)
+	default:
+		return fmt.Errorf(`seal: unknow format %d`, b[0])
+	}
 }

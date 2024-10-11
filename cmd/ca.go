@@ -24,6 +24,7 @@ func ca() (cmd *cobra.Command) {
 
 		country, state, locality, organization, organizational, content string
 		ignoreTime                                                      bool
+		format                                                          string
 	)
 	cmd = &cobra.Command{
 		Use:   "ca",
@@ -63,7 +64,17 @@ func ca() (cmd *cobra.Command) {
 					pri *seal.PrivateChain
 				)
 				if parentPath == "" {
-					pri, e = seal.New(md, bitSize)
+					var f seal.Format
+					switch format {
+					case `json`:
+						f = seal.FormatJSON
+					case `pb`:
+						f = seal.FormatProtocolBuffers
+					default:
+						e = errors.New(`seal: unknow format ` + format)
+						return
+					}
+					pri, e = seal.New(md, bitSize, f)
 				} else {
 					pri, e = readPrivateChain(parentPath, ignoreTime)
 					if e != nil {
@@ -113,5 +124,7 @@ func ca() (cmd *cobra.Command) {
 	flags.StringVarP(&content, "content", "c", "", "content")
 
 	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
+	flags.StringVarP(&format, "format", "F", "json", `marshal format ["json","pb"]`)
+
 	return
 }

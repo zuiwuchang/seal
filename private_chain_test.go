@@ -9,13 +9,13 @@ import (
 	"github.com/zuiwuchang/seal"
 )
 
-func TestMarshalRootChain(t *testing.T) {
+func testMarshalRootChain(t *testing.T, format seal.Format) {
 	pri, e := seal.New(seal.Metadata{
 		Hash:           crypto.SHA256,
 		Organization:   `cerberus`,
 		Organizational: `A`,
 		Content:        []byte(`root ca`),
-	}, 1024)
+	}, 1024, format)
 	if e != nil {
 		t.Fatal(`New`, e)
 	}
@@ -56,14 +56,17 @@ func TestMarshalRootChain(t *testing.T) {
 		t.Fatal(`Content not equal`)
 	}
 }
-
-func TestMarshalChain(t *testing.T) {
+func TestMarshalRootChain(t *testing.T) {
+	testMarshalRootChain(t, seal.FormatProtocolBuffers)
+	testMarshalRootChain(t, seal.FormatJSON)
+}
+func testMarshalChain(t *testing.T, format seal.Format) {
 	pri, e := seal.New(seal.Metadata{
 		Hash:           crypto.SHA256,
 		Organization:   `cerberus`,
 		Organizational: `A`,
 		Content:        []byte(`root ca`),
-	}, 1024)
+	}, 1024, format)
 	if e != nil {
 		t.Fatal(`New`, e)
 	}
@@ -115,5 +118,8 @@ func TestMarshalChain(t *testing.T) {
 	if !bytes.Equal(content, pub0.Metadata().Content) {
 		t.Fatal(`Content not equal`)
 	}
-
+}
+func TestMarshalChain(t *testing.T) {
+	testMarshalChain(t, seal.FormatProtocolBuffers)
+	testMarshalChain(t, seal.FormatJSON)
 }
