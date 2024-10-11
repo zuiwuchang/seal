@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zuiwuchang/seal/frame"
 	"github.com/zuiwuchang/seal/raw"
 	"google.golang.org/protobuf/proto"
 )
@@ -17,6 +18,7 @@ type Format byte
 const (
 	FormatJSON Format = 1 + iota
 	FormatProtocolBuffers
+	FormatBinary
 )
 
 // 簽名元信息
@@ -91,8 +93,17 @@ func formatMarshal(format Format, m proto.Message) ([]byte, error) {
 		return json.Marshal(m)
 	case FormatProtocolBuffers:
 		return proto.Marshal(m)
+	case FormatBinary:
+		if v, ok := m.(*raw.Metadata); ok {
+			return frame.MarshalMetadata(v)
+		} else if v, ok := m.(*raw.PublicChain); ok {
+			return frame.MarshalPublicChain(v)
+		} else if v, ok := m.(*raw.PrivateChain); ok {
+			return frame.MarshalPrivateChain(v)
+		}
+		return nil, fmt.Errorf(`seal: marshal not support %v`, m)
 	default:
-		return nil, fmt.Errorf(`seal: unknow format %d`, format)
+		return nil, fmt.Errorf(`seal: marshal unknow format %d`, format)
 	}
 }
 func formatUnmarshal(foramt Format, b []byte, m proto.Message) error {
@@ -102,6 +113,6 @@ func formatUnmarshal(foramt Format, b []byte, m proto.Message) error {
 	case FormatJSON:
 		return json.Unmarshal(b, m)
 	default:
-		return fmt.Errorf(`seal: unknow format %d`, b[0])
+		return fmt.Errorf(`seal: unmarshal unknow format %d`, b[0])
 	}
 }

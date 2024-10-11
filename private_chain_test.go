@@ -122,4 +122,5 @@ func testMarshalChain(t *testing.T, format seal.Format) {
 func TestMarshalChain(t *testing.T) {
 	testMarshalChain(t, seal.FormatProtocolBuffers)
 	testMarshalChain(t, seal.FormatJSON)
+	testMarshalChain(t, seal.FormatBinary)
 }
