@@ -39,30 +39,28 @@ func NewEncoder(w io.Writer, opt ...Option) (enc *Encoder, e error) {
 }
 
 // 編碼一個完整的幀
-func (enc *Encoder) Encode(id uint64, data []byte) (n int, e error) {
+func (enc *Encoder) Encode(id uint64, data []byte) (e error) {
 	w, e := enc.NextWriter(id)
 	if e != nil {
-		return 0, e
+		return e
 	}
-	n, e = w.Write(data)
+	_, e = w.WriteClose(data)
 	if e != nil {
 		return
 	}
-	e = w.Close()
 	return
 }
 
 // 編碼一個完整的幀
-func (enc *Encoder) EncodeString(id uint64, data string) (n int, e error) {
+func (enc *Encoder) EncodeString(id uint64, data string) (e error) {
 	w, e := enc.NextWriter(id)
 	if e != nil {
-		return 0, e
+		return e
 	}
-	n, e = w.Write(StringToBytes(data))
+	_, e = w.WriteClose(StringToBytes(data))
 	if e != nil {
 		return
 	}
-	e = w.Close()
 	return
 }
 
@@ -100,7 +98,7 @@ func (enc *Encoder) NextWriter(id uint64) (w *FrameWriter, e error) {
 
 	w = &FrameWriter{
 		id:      b,
-		w:       w,
+		w:       enc.w,
 		payload: enc.opts.payload,
 	}
 	return
@@ -299,6 +297,7 @@ func (f *FrameWriter) write(end bool, b []byte) (n int, e error) {
 		if e != nil {
 			return
 		}
+		f.id = nil
 	}
 
 	switch f.payload {

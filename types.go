@@ -112,6 +112,17 @@ func formatUnmarshal(foramt Format, b []byte, m proto.Message) error {
 		return proto.Unmarshal(b, m)
 	case FormatJSON:
 		return json.Unmarshal(b, m)
+	case FormatBinary:
+		// if v, ok := m.(*raw.Metadata); ok {
+		// 	return frame.UnmarshalMetadata(b, v)
+		// }
+		//  else if v, ok := m.(*raw.PublicChain); ok {
+		// 	return frame.MarshalPublicChain(v)
+		// } else
+		if v, ok := m.(*raw.PrivateChain); ok {
+			return frame.UnmarshalPrivateChain(b, v)
+		}
+		return fmt.Errorf(`seal: unmarshal not support %v`, m)
 	default:
 		return fmt.Errorf(`seal: unmarshal unknow format %d`, b[0])
 	}
