@@ -136,7 +136,7 @@ case "$1" in
             -y
         du -b caA.sign
 
-        ./seal ca \
+        ./seal sign \
             -p caB.pri --pub caB.sign \
             -d 10s \
             -H SHA-256 \

@@ -46,7 +46,7 @@ func MarshalMetadata(m *raw.Metadata) (b []byte, e error) {
 	}
 	if m.Afrer > 0 {
 		t := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, uint64(m.Afrer))
+		binary.BigEndian.PutUint64(t, uint64(m.Afrer))
 		e = w.Encode(4, t)
 		if e != nil {
 			return
@@ -54,7 +54,7 @@ func MarshalMetadata(m *raw.Metadata) (b []byte, e error) {
 	}
 	if m.Before > 0 {
 		t := make([]byte, 8)
-		binary.BigEndian.PutUint64(b, uint64(m.Before))
+		binary.BigEndian.PutUint64(t, uint64(m.Before))
 		e = w.Encode(5, t)
 		if e != nil {
 			return
