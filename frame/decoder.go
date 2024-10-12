@@ -18,7 +18,7 @@ func NewDecoder(r io.Reader, opt ...Option) (dec *Decoder, e error) {
 		o.apply(&opts)
 	}
 	switch opts.id {
-	case 8, 16, 32, 64:
+	case 0, 8, 16, 32, 64:
 	default:
 		e = ErrIdBitsInvalid
 		return
@@ -47,6 +47,7 @@ func (dec *Decoder) Decode() (id uint64, data []byte, e error) {
 // 創建一個幀讀取器
 func (dec *Decoder) NextReader() (id uint64, r *FrameReader, e error) {
 	switch dec.opts.id {
+	case 0:
 	case 8:
 		buf := []byte{0}
 		_, e = io.ReadAtLeast(dec.r, buf, len(buf))
@@ -86,6 +87,12 @@ func (dec *Decoder) NextReader() (id uint64, r *FrameReader, e error) {
 		buf:       make([]byte, 8),
 		byteOrder: dec.opts.byteOrder,
 	}
+	if dec.opts.id == 0 {
+		e = r.readSize(dec.r, true)
+		if e != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -98,19 +105,15 @@ type FrameReader struct {
 	byteOrder binary.ByteOrder
 }
 
-func (f *FrameReader) Read(b []byte) (n int, e error) {
-	max := len(b)
-	if max == 0 {
-		return
-	}
-	r := f.r
-	if r == nil {
-		e = io.EOF
-		return
-	}
+func (f *FrameReader) readSize(r io.Reader, zero bool) (e error) {
 	for f.size == 0 && !f.end {
 		_, e = io.ReadAtLeast(r, f.buf[:1], 1)
 		if e != nil {
+			if e == io.EOF {
+				if !zero {
+					e = io.ErrUnexpectedEOF
+				}
+			}
 			return
 		}
 
@@ -132,6 +135,9 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				}
 				_, e = io.ReadAtLeast(r, f.buf[:2], 2)
 				if e != nil {
+					if e == io.EOF {
+						e = io.ErrUnexpectedEOF
+					}
 					return
 				}
 				f.size = uint64(f.byteOrder.Uint16(f.buf))
@@ -142,6 +148,9 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				}
 				_, e = io.ReadAtLeast(r, f.buf[:4], 4)
 				if e != nil {
+					if e == io.EOF {
+						e = io.ErrUnexpectedEOF
+					}
 					return
 				}
 				f.size = uint64(f.byteOrder.Uint32(f.buf))
@@ -152,11 +161,30 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				}
 				_, e = io.ReadAtLeast(r, f.buf[:8], 8)
 				if e != nil {
+					if e == io.EOF {
+						e = io.ErrUnexpectedEOF
+					}
 					return
 				}
 				f.size = f.byteOrder.Uint64(f.buf)
 			}
 		}
+	}
+	return
+}
+func (f *FrameReader) Read(b []byte) (n int, e error) {
+	max := len(b)
+	if max == 0 {
+		return
+	}
+	r := f.r
+	if r == nil {
+		e = io.EOF
+		return
+	}
+	e = f.readSize(r, false)
+	if e != nil {
+		return
 	}
 
 	if uint64(max) > f.size {
@@ -168,7 +196,6 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 			f.size -= uint64(n)
 		}
 	}
-
 	if f.end && f.size == 0 {
 		f.r = nil
 		if n == 0 {

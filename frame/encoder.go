@@ -20,7 +20,7 @@ func NewEncoder(w io.Writer, opt ...Option) (enc *Encoder, e error) {
 		o.apply(&opts)
 	}
 	switch opts.id {
-	case 8, 16, 32, 64:
+	case 0, 8, 16, 32, 64:
 	default:
 		e = ErrIdBitsInvalid
 		return
@@ -68,6 +68,7 @@ func (enc *Encoder) EncodeString(id uint64, data string) (e error) {
 func (enc *Encoder) NextWriter(id uint64) (w *FrameWriter, e error) {
 	var b []byte
 	switch enc.opts.id {
+	case 0:
 	case 8:
 		if id > math.MaxUint8 {
 			e = fmt.Errorf(`id invalid %v`, id)
@@ -106,10 +107,12 @@ func (enc *Encoder) NextWriter(id uint64) (w *FrameWriter, e error) {
 }
 
 type FrameWriter struct {
+	err       error
 	id        []byte
 	w         io.Writer
 	payload   int
 	byteOrder binary.ByteOrder
+	closeSend bool
 }
 
 func write8(w io.Writer, flags byte, b []byte) (n int, e error) {
@@ -293,13 +296,11 @@ func (f *FrameWriter) write(end bool, b []byte) (n int, e error) {
 	} else {
 		flags = 0x80
 	}
-	id := f.id
-	if len(id) != 0 {
-		_, e = w.Write(id)
+	if len(f.id) != 0 {
+		_, e = w.Write(f.id)
 		if e != nil {
 			return
 		}
-		f.id = nil
 	}
 
 	switch f.payload {
@@ -314,29 +315,47 @@ func (f *FrameWriter) write(end bool, b []byte) (n int, e error) {
 	}
 	return
 }
-func (f *FrameWriter) Write(b []byte) (int, error) {
+func (f *FrameWriter) Write(b []byte) (n int, e error) {
+	if f.err != nil {
+		e = f.err
+		return
+	}
+
 	if len(b) == 0 {
-		return 0, nil
+		return
 	}
-	return f.write(false, b)
-}
-func (f *FrameWriter) Close() (e error) {
-	if f.w == nil {
-		e = ErrFrameWriterExpired
-	} else {
-		if len(f.id) == 0 {
-			_, e = f.w.Write([]byte{0})
-			if e != nil {
-				return
-			}
-		}
-		f.w = nil
-	}
+	n, e = f.write(false, b)
+	f.err = e
 	return
 }
-func (f *FrameWriter) WriteClose(b []byte) (int, error) {
-	if len(b) == 0 {
-		return 0, f.Close()
+func (f *FrameWriter) Close() (e error) {
+	if f.err != nil {
+		e = f.err
+		return
 	}
-	return f.write(true, b)
+
+	f.err = ErrFrameWriterExpired
+	if f.closeSend {
+		_, e = f.w.Write([]byte{0})
+		if e != nil {
+			return
+		}
+	}
+	f.w = nil
+	return
+}
+func (f *FrameWriter) WriteClose(b []byte) (n int, e error) {
+	if f.err != nil {
+		e = f.err
+		return
+	}
+
+	if len(b) == 0 {
+		e = f.Close()
+		return
+	}
+
+	n, e = f.write(true, b)
+	f.err = e
+	return
 }
