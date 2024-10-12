@@ -60,40 +60,42 @@ func (dec *Decoder) NextReader() (id uint64, r *FrameReader, e error) {
 		if e != nil {
 			return
 		}
-		id = uint64(binary.BigEndian.Uint16(buf))
+		id = uint64(dec.opts.byteOrder.Uint16(buf))
 	case 32:
 		buf := []byte{0, 0, 0, 0}
 		_, e = io.ReadAtLeast(dec.r, buf, len(buf))
 		if e != nil {
 			return
 		}
-		id = uint64(binary.BigEndian.Uint32(buf))
+		id = uint64(dec.opts.byteOrder.Uint32(buf))
 	case 64:
 		buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 		_, e = io.ReadAtLeast(dec.r, buf, len(buf))
 		if e != nil {
 			return
 		}
-		id = binary.BigEndian.Uint64(buf)
+		id = dec.opts.byteOrder.Uint64(buf)
 	default:
 		e = ErrIdBitsInvalid
 		return
 	}
 
 	r = &FrameReader{
-		r:       dec.r,
-		payload: dec.opts.payload,
-		buf:     make([]byte, 8),
+		r:         dec.r,
+		payload:   dec.opts.payload,
+		buf:       make([]byte, 8),
+		byteOrder: dec.opts.byteOrder,
 	}
 	return
 }
 
 type FrameReader struct {
-	r       io.Reader
-	payload int
-	size    uint64
-	end     bool
-	buf     []byte
+	r         io.Reader
+	payload   int
+	size      uint64
+	end       bool
+	buf       []byte
+	byteOrder binary.ByteOrder
 }
 
 func (f *FrameReader) Read(b []byte) (n int, e error) {
@@ -132,7 +134,7 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				if e != nil {
 					return
 				}
-				f.size = uint64(binary.BigEndian.Uint16(f.buf))
+				f.size = uint64(f.byteOrder.Uint16(f.buf))
 			case 126:
 				if f.payload < 32 {
 					e = ErrFramePayloadLengthInvalid
@@ -142,7 +144,7 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				if e != nil {
 					return
 				}
-				f.size = uint64(binary.BigEndian.Uint32(f.buf))
+				f.size = uint64(f.byteOrder.Uint32(f.buf))
 			case 127:
 				if f.payload < 64 {
 					e = ErrFramePayloadLengthInvalid
@@ -152,7 +154,7 @@ func (f *FrameReader) Read(b []byte) (n int, e error) {
 				if e != nil {
 					return
 				}
-				f.size = binary.BigEndian.Uint64(f.buf)
+				f.size = f.byteOrder.Uint64(f.buf)
 			}
 		}
 	}

@@ -1,6 +1,7 @@
 package frame
 
 import (
+	"encoding/binary"
 	"errors"
 	"io"
 	"unsafe"
@@ -34,16 +35,18 @@ func Write(w io.Writer, id uint8, data []byte) (n uint64, e error) {
 }
 
 var defaultOptions = options{
-	id:      32,
-	payload: 32,
+	id:        32,
+	payload:   32,
+	byteOrder: binary.BigEndian,
 }
 
 type Option interface {
 	apply(*options)
 }
 type options struct {
-	id      int
-	payload int
+	id        int
+	payload   int
+	byteOrder binary.ByteOrder
 }
 type funcOption struct {
 	f func(*options)
@@ -69,5 +72,16 @@ func WithId(bits int) Option {
 func WithPayload(bits int) Option {
 	return newFuncOption(func(o *options) {
 		o.payload = bits
+	})
+}
+
+// Set byteOrder
+func WithByteOrder(byteOrder binary.ByteOrder) Option {
+	return newFuncOption(func(o *options) {
+		if byteOrder == nil {
+			o.byteOrder = binary.BigEndian
+		} else {
+			o.byteOrder = byteOrder
+		}
 	})
 }

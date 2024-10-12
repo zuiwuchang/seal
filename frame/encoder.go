@@ -80,34 +80,36 @@ func (enc *Encoder) NextWriter(id uint64) (w *FrameWriter, e error) {
 			return
 		}
 		b = make([]byte, 2)
-		binary.BigEndian.PutUint16(b, uint16(id))
+		enc.opts.byteOrder.PutUint16(b, uint16(id))
 	case 32:
 		if id > math.MaxUint32 {
 			e = fmt.Errorf(`id invalid %v`, id)
 			return
 		}
 		b = make([]byte, 4)
-		binary.BigEndian.PutUint32(b, uint32(id))
+		enc.opts.byteOrder.PutUint32(b, uint32(id))
 	case 64:
 		b = make([]byte, 8)
-		binary.BigEndian.PutUint64(b, uint64(id))
+		enc.opts.byteOrder.PutUint64(b, uint64(id))
 	default:
 		e = ErrIdBitsInvalid
 		return
 	}
 
 	w = &FrameWriter{
-		id:      b,
-		w:       enc.w,
-		payload: enc.opts.payload,
+		id:        b,
+		w:         enc.w,
+		payload:   enc.opts.payload,
+		byteOrder: enc.opts.byteOrder,
 	}
 	return
 }
 
 type FrameWriter struct {
-	id      []byte
-	w       io.Writer
-	payload int
+	id        []byte
+	w         io.Writer
+	payload   int
+	byteOrder binary.ByteOrder
 }
 
 func write8(w io.Writer, flags byte, b []byte) (n int, e error) {
@@ -141,7 +143,7 @@ func write8(w io.Writer, flags byte, b []byte) (n int, e error) {
 		b = b[124:]
 	}
 }
-func write16(w io.Writer, flags byte, b []byte) (n int, e error) {
+func write16(byteOrder binary.ByteOrder, w io.Writer, flags byte, b []byte) (n int, e error) {
 	var (
 		sz      int
 		payload = []byte{0,
@@ -160,7 +162,7 @@ func write16(w io.Writer, flags byte, b []byte) (n int, e error) {
 			return
 		} else if sz <= math.MaxUint16 {
 			payload[0] = flags | 125
-			binary.BigEndian.PutUint16(payload[1:], uint16(sz))
+			byteOrder.PutUint16(payload[1:], uint16(sz))
 			_, e = w.Write(payload)
 			if e != nil {
 				return
@@ -171,7 +173,7 @@ func write16(w io.Writer, flags byte, b []byte) (n int, e error) {
 		}
 
 		payload[0] = 0x80 | 125
-		binary.BigEndian.PutUint16(payload[1:], uint16(sz))
+		byteOrder.PutUint16(payload[1:], uint16(sz))
 		_, e = w.Write(payload)
 		if e != nil {
 			return
@@ -184,7 +186,7 @@ func write16(w io.Writer, flags byte, b []byte) (n int, e error) {
 		b = b[math.MaxUint16:]
 	}
 }
-func write32(w io.Writer, flags byte, b []byte) (n int, e error) {
+func write32(byteOrder binary.ByteOrder, w io.Writer, flags byte, b []byte) (n int, e error) {
 	var (
 		sz      int
 		payload = []byte{0,
@@ -203,7 +205,7 @@ func write32(w io.Writer, flags byte, b []byte) (n int, e error) {
 			return
 		} else if sz <= math.MaxUint16 {
 			payload[0] = flags | 125
-			binary.BigEndian.PutUint16(payload[1:], uint16(sz))
+			byteOrder.PutUint16(payload[1:], uint16(sz))
 			_, e = w.Write(payload[:3])
 			if e != nil {
 				return
@@ -213,7 +215,7 @@ func write32(w io.Writer, flags byte, b []byte) (n int, e error) {
 			return
 		} else if sz <= math.MaxUint32 {
 			payload[0] = flags | 126
-			binary.BigEndian.PutUint32(payload[1:], uint32(sz))
+			byteOrder.PutUint32(payload[1:], uint32(sz))
 			_, e = w.Write(payload)
 			if e != nil {
 				return
@@ -224,7 +226,7 @@ func write32(w io.Writer, flags byte, b []byte) (n int, e error) {
 		}
 
 		payload[0] = 0x80 | 126
-		binary.BigEndian.PutUint32(payload[1:], uint32(sz))
+		byteOrder.PutUint32(payload[1:], uint32(sz))
 		_, e = w.Write(payload)
 		if e != nil {
 			return
@@ -237,7 +239,7 @@ func write32(w io.Writer, flags byte, b []byte) (n int, e error) {
 		b = b[math.MaxUint32:]
 	}
 }
-func write64(w io.Writer, flags byte, b []byte) (sz int, e error) {
+func write64(byteOrder binary.ByteOrder, w io.Writer, flags byte, b []byte) (sz int, e error) {
 	sz = len(b)
 	if sz < 125 {
 		payload := []byte{flags | byte(sz)}
@@ -250,7 +252,7 @@ func write64(w io.Writer, flags byte, b []byte) (sz int, e error) {
 	} else if sz <= math.MaxUint16 {
 		payload := []byte{flags | 125,
 			0, 0}
-		binary.BigEndian.PutUint16(payload[1:], uint16(sz))
+		byteOrder.PutUint16(payload[1:], uint16(sz))
 		_, e = w.Write(payload)
 		if e != nil {
 			return
@@ -260,7 +262,7 @@ func write64(w io.Writer, flags byte, b []byte) (sz int, e error) {
 	} else if sz <= math.MaxUint32 {
 		payload := []byte{flags | 126,
 			0, 0, 0, 0}
-		binary.BigEndian.PutUint32(payload[1:], uint32(sz))
+		byteOrder.PutUint32(payload[1:], uint32(sz))
 		_, e = w.Write(payload)
 		if e != nil {
 			return
@@ -271,7 +273,7 @@ func write64(w io.Writer, flags byte, b []byte) (sz int, e error) {
 
 	payload := []byte{flags | 127,
 		0, 0, 0, 0, 0, 0, 0, 0}
-	binary.BigEndian.PutUint64(payload[1:], uint64(sz))
+	byteOrder.PutUint64(payload[1:], uint64(sz))
 	_, e = w.Write(payload)
 	if e != nil {
 		return
@@ -304,11 +306,11 @@ func (f *FrameWriter) write(end bool, b []byte) (n int, e error) {
 	case 8:
 		n, e = write8(w, flags, b)
 	case 16:
-		n, e = write16(w, flags, b)
+		n, e = write16(f.byteOrder, w, flags, b)
 	case 32:
-		n, e = write32(w, flags, b)
+		n, e = write32(f.byteOrder, w, flags, b)
 	case 64:
-		n, e = write64(w, flags, b)
+		n, e = write64(f.byteOrder, w, flags, b)
 	}
 	return
 }
