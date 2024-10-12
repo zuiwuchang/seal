@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zuiwuchang/seal/frame"
 	"github.com/zuiwuchang/seal/raw"
 	"google.golang.org/protobuf/proto"
 )
@@ -120,6 +121,12 @@ func parsePublicChain(b []byte, at int64) (
 			return
 		}
 		e = json.Unmarshal(m.PublicKey.Metadata, &md)
+	case FormatBinary:
+		e = frame.UnmarshalPublicChain(b[1:], &m)
+		if e != nil {
+			return
+		}
+		e = frame.UnmarshalMetadata(m.PublicKey.Metadata, &md)
 	default:
 		e = fmt.Errorf(`seal: unknow format %d`, b[0])
 		return

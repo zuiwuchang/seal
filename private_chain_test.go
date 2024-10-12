@@ -59,6 +59,7 @@ func testMarshalRootChain(t *testing.T, format seal.Format) {
 func TestMarshalRootChain(t *testing.T) {
 	testMarshalRootChain(t, seal.FormatProtocolBuffers)
 	testMarshalRootChain(t, seal.FormatJSON)
+	testMarshalRootChain(t, seal.FormatBinary)
 }
 func testMarshalChain(t *testing.T, format seal.Format) {
 	pri, e := seal.New(seal.Metadata{

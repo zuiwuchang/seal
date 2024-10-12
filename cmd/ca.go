@@ -70,6 +70,8 @@ func ca() (cmd *cobra.Command) {
 						f = seal.FormatJSON
 					case `pb`:
 						f = seal.FormatProtocolBuffers
+					case `binary`:
+						f = seal.FormatBinary
 					default:
 						e = errors.New(`seal: unknow format ` + format)
 						return
@@ -124,7 +126,7 @@ func ca() (cmd *cobra.Command) {
 	flags.StringVarP(&content, "content", "c", "", "content")
 
 	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
-	flags.StringVarP(&format, "format", "F", "json", `marshal format ["json","pb"]`)
+	flags.StringVarP(&format, "format", "F", "binary", `marshal format ["json","pb","binary"]`)
 
 	return
 }
