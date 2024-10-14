@@ -22,6 +22,11 @@ func (p *PrivateChain) Marshal() []byte {
 	return p.raw
 }
 
+// 返回編碼格式
+func (p *PrivateChain) Format() Format {
+	return Format(p.raw[0])
+}
+
 // 加載序列化的私鏈到內存
 func ParsePrivateChain(b []byte) (*PrivateChain, error) {
 	return ParsePrivateChainWithTime(b, time.Now().Unix())

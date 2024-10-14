@@ -33,22 +33,29 @@ func read() (cmd *cobra.Command) {
 					if e != nil {
 						return
 					} else if pri != nil {
+						switch seal.Format(pri.Marshal()[0]) {
+						case seal.FormatJSON:
+							fmt.Println(`  Format: json`)
+						case seal.FormatProtocolBuffers:
+							fmt.Println(`  Format: pb`)
+						case seal.FormatBinary:
+							fmt.Println(`  Format: binary`)
+						}
 						fmt.Println(`  PrivateKey:`, base64.RawURLEncoding.EncodeToString(x509.MarshalPKCS1PrivateKey(pri.PrivateKey())))
 						pub = pri.PublicChain
+						printPub(pub, false)
 						if full {
-							for ; pub != nil; pub = pub.Parent() {
-								printPub(pub)
+							for pub = pub.Parent(); pub != nil; pub = pub.Parent() {
+								printPub(pub, true)
 							}
-						} else {
-							printPub(pub)
 						}
 					} else {
 						if full {
 							for ; pub != nil; pub = pub.Parent() {
-								printPub(pub)
+								printPub(pub, true)
 							}
 						} else {
-							printPub(pub)
+							printPub(pub, true)
 						}
 					}
 				}
@@ -65,7 +72,18 @@ func read() (cmd *cobra.Command) {
 	flags.BoolVarP(&ignoreTime, "time", "t", false, "ignore time error")
 	return
 }
-func printPub(pub *seal.PublicChain) {
+
+func printPub(pub *seal.PublicChain, format bool) {
+	if format {
+		switch pub.Format() {
+		case seal.FormatJSON:
+			fmt.Println(`  Format: json`)
+		case seal.FormatProtocolBuffers:
+			fmt.Println(`  Format: pb`)
+		case seal.FormatBinary:
+			fmt.Println(`  Format: binary`)
+		}
+	}
 	md := pub.Metadata()
 	printMetadata(md)
 }

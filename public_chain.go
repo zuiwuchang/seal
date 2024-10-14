@@ -60,6 +60,11 @@ func (p *PublicChain) Marshal() []byte {
 	return p.raw
 }
 
+// 返回編碼格式
+func (p *PublicChain) Format() Format {
+	return Format(p.raw[0])
+}
+
 // 加載序列化的公鏈到內存
 func ParsePublicChain(b []byte) (*PublicChain, error) {
 	return ParsePublicChainWithTime(b, time.Now().Unix())
