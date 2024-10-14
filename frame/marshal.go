@@ -86,7 +86,7 @@ func MarshalMetadata(m *raw.Metadata) (b []byte, e error) {
 		}
 	}
 	if len(m.Organizational) != 0 {
-		e = w.EncodeString(9, m.Organizational)
+		e = w.EncodeString(10, m.Organizational)
 		if e != nil {
 			return
 		}
